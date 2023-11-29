@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import Env
 from gymnasium import spaces
 import pygame
+import os
 
 import numpy as np
 
@@ -24,6 +25,17 @@ class LawnMowingEnvironment(Env):
         self.obstacles_location = np.zeros((self.num_obstacle,2), dtype=int) #obstacles' location
 
         self.window_size = 512  # The size of the PyGame window
+
+        #Load textures
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.short_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass00.png'))
+        self.shaved_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass01.png'))
+        self.medium_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass05.png'))
+        self.strong_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass06.png'))
+        self.rock = pygame.image.load(os.path.join(current_dir, 'texture/rock.png'))
+        self.tree = pygame.image.load(os.path.join(current_dir, 'texture/tree.png'))
+        self.gardner = pygame.image.load(os.path.join(current_dir, 'texture/lawnmower2.png'))
+
 
         # Observations are dictionaries with the agent's location and the position of its surrounding.
         # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
@@ -70,7 +82,61 @@ class LawnMowingEnvironment(Env):
         self.clock = None
 
     def render(self):
-        pass
+        if self.render_mode == "rgb_array":
+            return self._render_frame()
+        
+    def _render_frame(self):
+        if self.window is None and self.render_mode == "human":
+            pygame.init()
+            pygame.display.init()
+            self.window = pygame.display.set_mode(
+                (self.window_size, self.window_size)
+            )
+        if self.clock is None and self.render_mode == "human":
+            self.clock = pygame.time.Clock()
+
+        canvas = pygame.Surface((self.window_size, self.window_size))
+        canvas.fill((255, 255, 255))
+        pix_square_size = (
+            self.window_size / self.size
+        )  # The size of a single grid square in pixels
+
+        #Compute offset to center the grid
+        grid_size = self.size * pix_square_size
+    
+        x_offset = (canvas.get_width() - grid_size) // 2
+        y_offset = (canvas.get_height() - grid_size) // 2
+
+        #Render the grid
+        cell_image = None
+        for i in range(self.size):
+            for j in range(self.size):
+                match self.state[i,j]:
+                    case 0:
+                        #Resize the image 
+                        cell_image = pygame.transform.scale(self.short_grass, (int(pix_square_size), int(pix_square_size)))
+                    case 1:
+                        cell_image = pygame.transform.scale(self.shaved_grass, (int(pix_square_size), int(pix_square_size)))
+                    case 2:
+                        cell_image = pygame.transform.scale(self.medium_grass, (int(pix_square_size), int(pix_square_size)))
+                    case 3:
+                        cell_image = pygame.transform.scale(self.strong_grass, (int(pix_square_size), int(pix_square_size)))
+                    case 4:
+                        cell_image = pygame.transform.scale(self.tree, (int(pix_square_size), int(pix_square_size)))
+                    case 5:
+                        cell_image = pygame.transform.scale(self.rock, (int(pix_square_size), int(pix_square_size)))
+                
+                canvas.blit(cell_image, (j * pix_square_size + x_offset, i * pix_square_size + y_offset))
+        
+        # Draw the canvas onto the window
+        self.window.blit(canvas, (0, 0))
+        pygame.display.flip()
+
+        # Update the screen to avoid freezing
+        pygame.event.get()
+
+    def close(self):
+        pygame.quit() #To close the game window
     
     def step(self, action):
         reward = None
