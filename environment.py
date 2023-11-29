@@ -12,11 +12,11 @@ class LawnMowingEnvironment(Env):
 
     def __init__(self, render_mode="None", size=8):
         self.size = size  # The size of the square grid
-        self.state = np.zeros((size, size), dtype=int) #initialize the grid
-
+        self.state = np.random.randint(low=0, high=4, size=(size, size)) #initialize the grid
+        
         self._agent_location = np.array([0,0]) #agent's location
 
-        self.num_obstacle = size/2 #=??
+        self.num_obstacle = size-2
         self.obstacles_location = np.zeros((self.num_obstacle,2), dtype=int) #obstacles' location
 
         self.window_size = 512  # The size of the PyGame window
