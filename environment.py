@@ -14,6 +14,10 @@ class LawnMowingEnvironment(Env):
         self.size = size  # The size of the square grid
         self.state = np.random.randint(low=0, high=4, size=(size, size)) #initialize the grid
         
+        #Initialize the agent points and penalties which it can reach during the game
+        self.points = 0
+        self.penalty = 0
+
         self._agent_location = np.array([0,0]) #agent's location
 
         self.num_obstacle = size-2
@@ -68,19 +72,115 @@ class LawnMowingEnvironment(Env):
     def render(self):
         pass
     
-    def step(self):
-        pass
+    def step(self, action):
+        reward = None
+
+        #Check agent's location (If it is outside of the grid)
+        if self._agent_location[0]<0 or self._agent_location[0]>=self.size or self._agent_location[1]<0 or self._agent_location[1]>=self.size: 
+            reward=-1000
+        else:
+            #Take grid cell
+            cell = self.state[self._agent_location[0], self._agent_location[1]]
+            
+            match cell:
+                case 0: #shaved grass
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = 0
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = -1
+                    elif action == 5: #medium cut
+                        reward = -2
+                    elif action == 6: #strong cut
+                        reward = -3
+                case 1: #short grass
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = -3
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = 3
+                    elif action == 5: #medium cut
+                        reward = -1
+                    elif action == 6: #strong cut
+                        reward = -2
+                case 2: #grass medium height
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = -4
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = -1
+                    elif action == 5: #medium cut
+                        reward = 4
+                    elif action == 6: #strong cut
+                        reward = -1
+                case 3: #high grass
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = -5
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = -2
+                    elif action == 5: #medium cut
+                        reward = -1
+                    elif action == 6: #strong cut
+                        reward = 5
+                case 4: #tree
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = 0
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = -1
+                    elif action == 5: #medium cut
+                        reward = -2
+                    elif action == 6: #strong cut
+                        reward = -3
+                case 5: #rock
+                    if action >=0 and action<=3 : #right-up-left-down
+                        reward = 0
+                        self.move_agent(action)
+                    elif action == 4: #weak cut
+                        reward = -2
+                    elif action == 5: #medium cut
+                        reward = -3
+                    elif action == 6: #strong cut
+                        reward = -4
+
+        #Update agent points
+        self.points += reward
+
+        #Update total penalty
+        if reward<0:
+            self.penalty += reward
+
+        terminated = False
+        if self.points >=50 or self.penalty>=10: #point threshold - penalty threshold ?????
+            terminated = True
+        
+        
+        
+        #Get the next observation due to the agent actions
+        observation = self._get_obs()
+        info = self._get_info()
+
+        return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
+        #Reset the agent point and penalties
+        self.points = 0
+        self.penalty = 0
+
         # Choose the agent's location uniformly at random
         self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
 
+        #Set shaved grass in the agent's location
+        self.state[self._agent_location[0], self._agent_location[1]]= 0 
+
         self.generate_obstacles()
 
-        """if np.array_equal(self._agent_location, [0,0]):
+        """
+        if np.array_equal(self._agent_location, [0,0]):
 
             if any(np.array_equal([0,1], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([1,0], obstacle) for obstacle in self.obstacles_location):
 
@@ -191,10 +291,17 @@ class LawnMowingEnvironment(Env):
                         ps = self.obstacles_location[i]
                         self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
                         self.check_obstacles_position(position=ps)
-                        break
-                    
-                 
-"""
+                        break       
+        """
+
+        #Add the obstacles on matrix
+        i = 0        
+        for location in self.obstacles_location:
+            if i % 2 == 0:
+                self.state[location[0], location[1]] = 4 # tree
+            else:
+                self.state[location[0], location[1]] = 5 # rock
+        
         observation = self._get_obs()
         info = self._get_info()
 
@@ -204,7 +311,7 @@ class LawnMowingEnvironment(Env):
         return observation, info
 
     def _get_obs(self):
-        return {"agent": self._agent_location}
+        return {"agent": self._agent_location, "grid":self.state}
     
     def _get_info(self):
         return {"around":self.observation_space} #????
@@ -243,6 +350,17 @@ class LawnMowingEnvironment(Env):
                     j+=1
             
             j = 0
+    
+    def move_agent(self, action):
+        match action:
+            case 0:
+                self._agent_location = self._agent_location + self._action_to_direction[0]
+            case 1:
+                self._agent_location = self._agent_location + self._action_to_direction[1]
+            case 2:
+                self._agent_location = self._agent_location + self._action_to_direction[2]
+            case 3:
+                self._agent_location = self._agent_location + self._action_to_direction[3]
     
 
 
