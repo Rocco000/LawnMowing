@@ -10,19 +10,19 @@ class LawnMowingEnvironment(Env):
     #Specify the render-modes 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode="None", size=4):
+    def __init__(self, render_mode="None", size=8):
         self.size = size  # The size of the square grid
         self.state = np.zeros((size, size), dtype=int) #initialize the grid
 
         self._agent_location = np.array([0,0]) #agent's location
 
-        self.num_obstacle = size/4
+        self.num_obstacle = size/2 #=??
         self.obstacles_location = np.zeros((self.num_obstacle,2), dtype=int) #obstacles' location
 
         self.window_size = 512  # The size of the PyGame window
 
         # Observations are dictionaries with the agent's location and the position of its surrounding.
-        # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-3
+        # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
         self.observation_space = spaces.Dict(
             {
                 "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
@@ -34,7 +34,7 @@ class LawnMowingEnvironment(Env):
         )
 
         # We have 5 actions, corresponding to "right", "up", "left", "down", "cut"
-        self.action_space = spaces.Discrete(5)
+        self.action_space = spaces.Discrete(7)
 
         """
         The following dictionary maps abstract actions from `self.action_space` to
@@ -47,6 +47,9 @@ class LawnMowingEnvironment(Env):
             2: np.array([-1, 0]),
             3: np.array([0, -1]),
             4: np.array([0, 0]),
+            5: np.array([0, 0]),
+            6: np.array([0, 0]),
+            7: np.array([0, 0])
         }
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -75,9 +78,9 @@ class LawnMowingEnvironment(Env):
         # Choose the agent's location uniformly at random
         self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
 
-        self.check_obstacles_position()
+        self.generate_obstacles()
 
-        if np.array_equal(self._agent_location, [0,0]):
+        """if np.array_equal(self._agent_location, [0,0]):
 
             if any(np.array_equal([0,1], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([1,0], obstacle) for obstacle in self.obstacles_location):
 
@@ -191,7 +194,7 @@ class LawnMowingEnvironment(Env):
                         break
                     
                  
-
+"""
         observation = self._get_obs()
         info = self._get_info()
 
@@ -206,7 +209,7 @@ class LawnMowingEnvironment(Env):
     def _get_info(self):
         return {"around":self.observation_space} #????
     
-    def check_obstacles_position(self, position=None):
+    def generate_obstacles(self, position=None):
         # We will sample the obstacle's location randomly until it does not coincide with the agent's location or other obstacles
         j = 0
         for i in range(self.num_obstacle):
