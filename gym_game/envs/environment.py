@@ -28,13 +28,14 @@ class LawnMowingEnvironment(Env):
 
         #Load textures
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.short_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass00.png'))
-        self.shaved_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass01.png'))
-        self.medium_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass05.png'))
-        self.strong_grass = pygame.image.load(os.path.join(current_dir, 'texture/Grass06.png'))
-        self.rock = pygame.image.load(os.path.join(current_dir, 'texture/rock.png'))
-        self.tree = pygame.image.load(os.path.join(current_dir, 'texture/tree.png'))
-        self.gardner = pygame.image.load(os.path.join(current_dir, 'texture/lawnmower2.png'))
+        gym_game_dir = os.path.dirname(current_dir)
+        self.short_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass00.png'))
+        self.shaved_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass01.png'))
+        self.medium_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass05.png'))
+        self.strong_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass06.png'))
+        self.rock = pygame.image.load(os.path.join(gym_game_dir, 'texture','rock.png'))
+        self.tree = pygame.image.load(os.path.join(gym_game_dir, 'texture','tree.png'))
+        self.gardner = pygame.image.load(os.path.join(gym_game_dir, 'texture','lawnmower2.png'))
 
 
         # Observations are dictionaries with the agent's location and the position of its surrounding.
@@ -42,10 +43,11 @@ class LawnMowingEnvironment(Env):
         self.observation_space = spaces.Dict(
             {
                 "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "right": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "left": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "up": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "down": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                "grid": spaces.Box(0, 5, shape=(size, size), dtype=int),
+                #"right": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                #"left": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                #"up": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                #"down": spaces.Box(0, size - 1, shape=(2,), dtype=int),
             }
         )
 
@@ -82,8 +84,8 @@ class LawnMowingEnvironment(Env):
         self.clock = None
 
     def render(self):
-        if self.render_mode == "rgb_array":
-            return self._render_frame()
+        #if self.render_mode == "rgb_array":
+        return self._render_frame()
         
     def _render_frame(self):
         if self.window is None and self.render_mode == "human":
@@ -242,6 +244,7 @@ class LawnMowingEnvironment(Env):
 
         #Set shaved grass in the agent's location
         self.state[self._agent_location[0], self._agent_location[1]]= 0 
+        
 
         self.generate_obstacles()
 
@@ -367,6 +370,8 @@ class LawnMowingEnvironment(Env):
                 self.state[location[0], location[1]] = 4 # tree
             else:
                 self.state[location[0], location[1]] = 5 # rock
+            
+            i = i +1
         
         observation = self._get_obs()
         info = self._get_info()
@@ -389,7 +394,7 @@ class LawnMowingEnvironment(Env):
 
             if position is None:
                 #until the obstacle's location is equal to agent's location we re-generate its position
-                while np.array_equal(self.obstacles_location[i], self._agent_location): 
+                while np.array_equal(self.obstacles_location[i], self._agent_location):
                     self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
             else:
                 #Until the obstacle's location is equal to agent's location or in a no valid position
@@ -403,7 +408,8 @@ class LawnMowingEnvironment(Env):
                     flag = True
                     if position is None:
                         #Until the two obstacles have the same location or the i obstacle has the same agent's location
-                        while np.array_equal(self.obstacles_location[j], self.obstacles_location[i]) or np.array_equal(self._agent_location, self.obstacles_location[i]): 
+                        while np.array_equal(self.obstacles_location[j], self.obstacles_location[i]) or np.array_equal(self._agent_location, self.obstacles_location[i]):
+                            
                             self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
                     else:
                         #Until the two obstacles have the same location or the i-obstacle has the same agent's location or has a no vali position
@@ -412,8 +418,9 @@ class LawnMowingEnvironment(Env):
                 
                 if flag:
                     j = 0
+                    flag = False
                 else:
-                    j+=1
+                    j = j +1
             
             j = 0
     
