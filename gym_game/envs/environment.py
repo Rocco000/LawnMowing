@@ -35,19 +35,21 @@ class LawnMowingEnvironment(Env):
         self.strong_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass06.png'))
         self.rock = pygame.image.load(os.path.join(gym_game_dir, 'texture','rock.png'))
         self.tree = pygame.image.load(os.path.join(gym_game_dir, 'texture','tree.png'))
-        self.gardner = pygame.image.load(os.path.join(gym_game_dir, 'texture','lawnmower2.png'))
+        #self.gardner = pygame.image.load(os.path.join(gym_game_dir, 'texture','lawnmower2.png'))
+        self.short_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass00_lw.png'))
+        self.shaved_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass01_lw.png'))
+        self.medium_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass05_lw.png'))
+        self.strong_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass06_lw.png'))
+        self.rock_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','rock_lw.png'))
+        self.tree_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','tree_lw.png'))
 
 
         # Observations are dictionaries with the agent's location and the position of its surrounding.
         # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
         self.observation_space = spaces.Dict(
             {
-                "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "grid": spaces.Box(0, 5, shape=(size, size), dtype=int),
-                #"right": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                #"left": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                #"up": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                #"down": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                "agent": spaces.Box(low=0, high=size-1, shape=(2,), dtype=int),
+                "grid": spaces.Box(low=0, high=5, shape=(size, size), dtype=int)
             }
         )
 
@@ -66,8 +68,7 @@ class LawnMowingEnvironment(Env):
             3: np.array([0, -1]),
             4: np.array([0, 0]),
             5: np.array([0, 0]),
-            6: np.array([0, 0]),
-            7: np.array([0, 0])
+            6: np.array([0, 0])
         }
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -115,18 +116,36 @@ class LawnMowingEnvironment(Env):
             for j in range(self.size):
                 match self.state[i,j]:
                     case 0:
-                        #Resize the image 
-                        cell_image = pygame.transform.scale(self.short_grass, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.short_grass_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            #Resize the image 
+                            cell_image = pygame.transform.scale(self.short_grass, (int(pix_square_size), int(pix_square_size)))
                     case 1:
-                        cell_image = pygame.transform.scale(self.shaved_grass, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.shaved_grass_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            cell_image = pygame.transform.scale(self.shaved_grass, (int(pix_square_size), int(pix_square_size)))
                     case 2:
-                        cell_image = pygame.transform.scale(self.medium_grass, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.medium_grass_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            cell_image = pygame.transform.scale(self.medium_grass, (int(pix_square_size), int(pix_square_size)))
                     case 3:
-                        cell_image = pygame.transform.scale(self.strong_grass, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.strong_grass_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            cell_image = pygame.transform.scale(self.strong_grass, (int(pix_square_size), int(pix_square_size)))
                     case 4:
-                        cell_image = pygame.transform.scale(self.tree, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.tree_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            cell_image = pygame.transform.scale(self.tree, (int(pix_square_size), int(pix_square_size)))
                     case 5:
-                        cell_image = pygame.transform.scale(self.rock, (int(pix_square_size), int(pix_square_size)))
+                        if self._agent_location[0]==i and self._agent_location[1]==j:
+                            cell_image = pygame.transform.scale(self.rock_lw, (int(pix_square_size), int(pix_square_size)))
+                        else:
+                            cell_image = pygame.transform.scale(self.rock, (int(pix_square_size), int(pix_square_size)))
                 
                 canvas.blit(cell_image, (j * pix_square_size + x_offset, i * pix_square_size + y_offset))
         
@@ -145,72 +164,91 @@ class LawnMowingEnvironment(Env):
 
         #Check agent's location (If it is outside of the grid)
         if self._agent_location[0]<0 or self._agent_location[0]>=self.size or self._agent_location[1]<0 or self._agent_location[1]>=self.size: 
-            reward=-1000
+            reward = -1000
         else:
-            #Take grid cell
-            cell = self.state[self._agent_location[0], self._agent_location[1]]
-            
-            match cell:
-                case 0: #shaved grass
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = 0
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = -1
-                    elif action == 5: #medium cut
-                        reward = -2
-                    elif action == 6: #strong cut
-                        reward = -3
-                case 1: #short grass
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = -3
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = 3
-                    elif action == 5: #medium cut
-                        reward = -1
-                    elif action == 6: #strong cut
-                        reward = -2
-                case 2: #grass medium height
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = -4
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = -1
-                    elif action == 5: #medium cut
-                        reward = 4
-                    elif action == 6: #strong cut
-                        reward = -1
-                case 3: #high grass
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = -5
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = -2
-                    elif action == 5: #medium cut
-                        reward = -1
-                    elif action == 6: #strong cut
-                        reward = 5
-                case 4: #tree
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = 0
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = -1
-                    elif action == 5: #medium cut
-                        reward = -2
-                    elif action == 6: #strong cut
-                        reward = -3
-                case 5: #rock
-                    if action >=0 and action<=3 : #right-up-left-down
-                        reward = 0
-                        self.move_agent(action)
-                    elif action == 4: #weak cut
-                        reward = -2
-                    elif action == 5: #medium cut
-                        reward = -3
-                    elif action == 6: #strong cut
-                        reward = -4
+            #Check if the agent go outside of the game grid
+            if self._agent_location[0] == 0:
+                #The agent is on the first row of the game grid
+                if action == 2: #Go to left
+                    reward = -1000
+            elif self._agent_location[0] == (self.size-1):
+                if action == 0: #Go to right
+                    reward = -1000
+            elif self._agent_location[1] == 0:
+                if action == 3: #Go to back
+                    reward = -1000
+            elif self._agent_location[1] == (self.size-1):
+                if action == 1: #Go ahead
+                    reward = -1000
+
+            if reward is None:
+                #Take grid cell
+                cell = self.state[self._agent_location[0], self._agent_location[1]]
+                
+                match cell:
+                    case 0: #shaved grass
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = 0
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = -1
+                        elif action == 5: #medium cut
+                            reward = -2
+                        elif action == 6: #strong cut
+                            reward = -3
+                    case 1: #short grass
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = -3
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = 3
+                            self.state[self._agent_location[0], self._agent_location[1]] = 0
+                        elif action == 5: #medium cut
+                            reward = -1
+                        elif action == 6: #strong cut
+                            reward = -2
+                    case 2: #grass medium height
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = -4
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = -1
+                        elif action == 5: #medium cut
+                            reward = 4
+                            self.state[self._agent_location[0], self._agent_location[1]] = 0
+                        elif action == 6: #strong cut
+                            reward = -1
+                    case 3: #high grass
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = -5
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = -2
+                        elif action == 5: #medium cut
+                            reward = -1
+                        elif action == 6: #strong cut
+                            reward = 5
+                            self.state[self._agent_location[0], self._agent_location[1]] = 0
+                    case 4: #tree
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = 0
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = -1
+                        elif action == 5: #medium cut
+                            reward = -2
+                        elif action == 6: #strong cut
+                            reward = -3
+                    case 5: #rock
+                        if action >=0 and action<=3 : #right-up-left-down
+                            reward = 0
+                            self.move_agent(action)
+                        elif action == 4: #weak cut
+                            reward = -2
+                        elif action == 5: #medium cut
+                            reward = -3
+                        elif action == 6: #strong cut
+                            reward = -4
 
         #Update agent points
         self.points += reward
@@ -220,7 +258,7 @@ class LawnMowingEnvironment(Env):
             self.penalty += reward
 
         terminated = False
-        if self.points >=50 or self.penalty>=10: #point threshold - penalty threshold ?????
+        if self.points >=50 or self.penalty<=-10: #point threshold - penalty threshold ?????
             terminated = True
         
         
@@ -238,6 +276,9 @@ class LawnMowingEnvironment(Env):
         #Reset the agent point and penalties
         self.points = 0
         self.penalty = 0
+
+        #Refresh the grass
+        self.state = np.random.randint(low=0, high=4, size=(self.size, self.size))
 
         # Choose the agent's location uniformly at random
         self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
