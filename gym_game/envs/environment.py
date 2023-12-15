@@ -209,17 +209,38 @@ class LawnMowingEnvironment(Env):
         else:
             #Check if the agent go outside of the game grid
             if self._agent_location[0] == 0:
+                #The agent is on the first row and the first column of the game grid and the action is backward
+                if self._agent_location[1]==0 and action==3:
+                    reward=-1000
+                #The agent is on the first row and the last column of the game grid and the action is forward
+                elif self._agent_location[1]==(self.size-1) and action==1:
+                    reward=-1000
                 #The agent is on the first row of the game grid
-                if action == 2: #Go to left
+                elif action == 2: #Go to left
                     reward = -1000
             elif self._agent_location[0] == (self.size-1):
-                if action == 0: #Go to right
+                #The agent is on the last row and the first column of the game grid and the action is backward
+                if self._agent_location[1]==0 and action==3:
+                    reward=-1000
+                #The agent is on the last row and the last column of the game grid and the action is forward
+                elif self._agent_location[1]==(self.size-1) and action==1:
+                    reward=-1000
+                #The agent is on the last row of the game grid
+                elif action == 0: #Go to right
                     reward = -1000
-            elif self._agent_location[1] == 0:
-                if action == 3: #Go to back
+            elif self._agent_location[1] == 0:#The agent is on the first column
+                if self._agent_location[0]==0 and action==2:
+                    reward=-1000
+                elif self._agent_location[0]==(self.size-1) and action==0:
+                    reward=-1000
+                elif action == 3: #Go to back
                     reward = -1000
             elif self._agent_location[1] == (self.size-1):
-                if action == 1: #Go ahead
+                if self._agent_location[0]==0 and action==2:
+                    reward=-1000
+                elif self._agent_location[0]==(self.size-1) and action==0:
+                    reward=-1000
+                elif action == 1: #Go ahead
                     reward = -1000
 
             if reward is None:
@@ -329,6 +350,7 @@ class LawnMowingEnvironment(Env):
 
         # Choose the agent's location uniformly at random
         self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
+        print("posizione agente",self._agent_location)
 
         #Set shaved grass in the agent's location
         self.state[self._agent_location[0], self._agent_location[1]]= 6 
@@ -518,6 +540,7 @@ class LawnMowingEnvironment(Env):
 
         #Add +6 in the next cell
         self.state[self._agent_location[0], self._agent_location[1]] = self.state[self._agent_location[0], self._agent_location[1]]+6
+
 
     def update_weather(self):
         #Define array of probabilities
