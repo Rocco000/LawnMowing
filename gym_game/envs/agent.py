@@ -62,9 +62,9 @@ class MyAgent():
             #EXPLOITATION
             state = T.FloatTensor(observation).unsqueeze(0).to(self.Q_eval.device) #Transform it in tensor and add a dimension (batch dimension)
             actions = self.Q_eval(state) #Take prediction
-            print("Predizione modello (singola griglia): ",actions)
+            #print("Predizione modello (singola griglia): ",actions)
             actions = F.softmax(actions, dim=1) #dim=0 because the model output has only one dimension, it is a 1d array
-            print("Dopo softmax (singola griglia): ",actions)
+            #print("Dopo softmax (singola griglia): ",actions)
             _, action = T.max(actions, 1)
             action = action.cpu().numpy()
         else:
@@ -112,6 +112,18 @@ class MyAgent():
         self.Q_eval.optimizer.step()
 
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
+
+    def update_model(self, configuration):
+        self.Q_eval.load_state_dict(configuration)
+
+    def set_model_on_train_mode(self):
+        self.Q_eval.train()
+
+    def set_model_on_test_mode(self):
+        self.Q_eval.eval()
+
+    def get_model_configuration(self):
+        return self.Q_eval.state_dict()
 
 
 

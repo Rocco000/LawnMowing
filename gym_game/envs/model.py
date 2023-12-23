@@ -9,9 +9,9 @@ class DeepQNetwork(nn.Module):
         super(DeepQNetwork, self).__init__()
         self.input_dim = input_dim[0]*input_dim[0]
         self.n_actions = n_actions
-        self.fc1 = nn.Linear(self.input_dim, 32)
-        self.fc2 = nn.Linear(32, 16)
-        self.fc3 = nn.Linear(16, n_actions)
+        self.fc1 = nn.Linear(self.input_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, n_actions)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.loss = nn.MSELoss()
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
