@@ -11,11 +11,11 @@ import threading
 class LawnMowingEnvironment(Env):
     
     #Specify the render-modes 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode="None", size=8):
+    def __init__(self, render_mode=None, size=8, weather_interval=60):
         self.size = size  # The size of the square grid
-        self.state = np.random.randint(low=0, high=4, size=(size, size)) #initialize the grid
+        self.state = np.random.randint(low=1, high=4, size=(size, size)) #initialize the grid
         
         #Initialize the agent points and penalties which it can reach during the game
         self.points = 0
@@ -31,17 +31,17 @@ class LawnMowingEnvironment(Env):
         #Load textures
         current_dir = os.path.dirname(os.path.abspath(__file__))
         gym_game_dir = os.path.dirname(current_dir)
-        self.short_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass00.png'))
-        self.shaved_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass01.png'))
-        self.medium_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass05.png'))
-        self.strong_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass06.png'))
+        self.shaved_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','shaved_grass.png'))
+        self.short_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','short_grass.png'))
+        self.medium_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','medium_grass.png'))
+        self.strong_grass = pygame.image.load(os.path.join(gym_game_dir, 'texture','strong_grass.png'))
         self.rock = pygame.image.load(os.path.join(gym_game_dir, 'texture','rock.png'))
         self.tree = pygame.image.load(os.path.join(gym_game_dir, 'texture','tree.png'))
         
-        self.short_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass00_lw.png'))
-        self.shaved_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass01_lw.png'))
-        self.medium_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass05_lw.png'))
-        self.strong_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','Grass06_lw.png'))
+        self.short_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','shaved_grass_lw.png'))
+        self.shaved_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','short_grass_lw.png'))
+        self.medium_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','medium_grass_lw.png'))
+        self.strong_grass_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','strong_grass_lw.png'))
         self.rock_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','rock_lw.png'))
         self.tree_lw = pygame.image.load(os.path.join(gym_game_dir, 'texture','tree_lw.png'))
 
@@ -51,20 +51,24 @@ class LawnMowingEnvironment(Env):
         self.rainy = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_rainy.png'))
         
         #Create thread to update weather and grass
-        self.weather_thread = threading.Thread(target=self.update_weather_and_grow)
-        self._stop_event = threading.Event()
+        #self.weather_thread = threading.Thread(target=self.update_weather_and_grow)
+        #self._stop_event = threading.Event()
         
         self.game_over = False
 
+        #To count the number of steps
+        self.step_counter = 0 
 
         # Observations are dictionaries with the agent's location and the position of its surrounding.
         # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
-        self.observation_space = spaces.Dict(
+        self.observation_space = spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
+
+        """self.observation_space = spaces.Dict(
             {
                 "agent": spaces.Box(low=0, high=size-1, shape=(2,), dtype=int),
                 "grid": spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
             }
-        )
+        )"""
 
         # We have 5 actions, corresponding to "right", "up", "left", "down", "cut"
         self.action_space = spaces.Discrete(7)
@@ -98,6 +102,7 @@ class LawnMowingEnvironment(Env):
         self.clock = None
 
         #Weather
+        self.weather_interval = weather_interval
         self.weather_probabilities = {'sunny': 0.4, 'cloudy': 0.3, 'rainy': 0.3}
         self.current_weather = "sunny"
 
@@ -151,9 +156,9 @@ class LawnMowingEnvironment(Env):
                 match self.state[i,j]:
                     case 0:
                         #Resize the image 
-                        cell_image = pygame.transform.scale(self.short_grass, (int(pix_square_size_x), int(pix_square_size_y)))
-                    case 1:
                         cell_image = pygame.transform.scale(self.shaved_grass, (int(pix_square_size_x), int(pix_square_size_y)))
+                    case 1:
+                        cell_image = pygame.transform.scale(self.short_grass, (int(pix_square_size_x), int(pix_square_size_y)))
                     case 2:
                         cell_image = pygame.transform.scale(self.medium_grass, (int(pix_square_size_x), int(pix_square_size_y)))
                     case 3:
@@ -201,6 +206,8 @@ class LawnMowingEnvironment(Env):
         pygame.quit() #To close the game window
     
     def step(self, action):
+        self.step_counter = self.step_counter + 1
+        #print("Num azione: ",self.step_counter)
         reward = None
 
         #Check agent's location (If it is outside of the grid)
@@ -260,7 +267,7 @@ class LawnMowingEnvironment(Env):
                             reward = -3
                     case 1: #short grass
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -3
+                            reward = -1
                             self.move_agent(action)
                         elif action == 4: #weak cut
                             reward = 3
@@ -271,34 +278,34 @@ class LawnMowingEnvironment(Env):
                             reward = -2
                     case 2: #grass medium height
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -4
+                            reward = -1
                             self.move_agent(action)
                         elif action == 4: #weak cut
                             reward = -1
                         elif action == 5: #medium cut
-                            reward = 4
+                            reward = 6
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                         elif action == 6: #strong cut
                             reward = -1
                     case 3: #high grass
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -5
+                            reward = -1
                             self.move_agent(action)
                         elif action == 4: #weak cut
                             reward = -2
                         elif action == 5: #medium cut
                             reward = -1
                         elif action == 6: #strong cut
-                            reward = 5
+                            reward = 9
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                     case 4: #tree
                         if action >=0 and action<=3 : #right-up-left-down
                             reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -1
+                            reward = -3
                         elif action == 5: #medium cut
-                            reward = -2
+                            reward = -3
                         elif action == 6: #strong cut
                             reward = -3
                     case 5: #rock
@@ -306,9 +313,9 @@ class LawnMowingEnvironment(Env):
                             reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -2
+                            reward = -4
                         elif action == 5: #medium cut
-                            reward = -3
+                            reward = -4
                         elif action == 6: #strong cut
                             reward = -4
 
@@ -320,11 +327,19 @@ class LawnMowingEnvironment(Env):
             self.penalty += reward
 
         terminated = False
-        if self.points >=50 or self.penalty<=-10: #point threshold - penalty threshold ?????
+        if self.points >=200 or self.penalty<=-50: #point threshold - penalty threshold ?????
             terminated = True
             self.game_over = True
         
-        
+        if not terminated:
+            if self.step_counter == self.weather_interval:
+                #print("Aggiorno meteo!")
+                self.step_counter = 0
+                self.update_weather()
+            else:
+                #print("Erba cresce")
+                self.grow_grass()
+
         
         #Get the next observation due to the agent actions
         observation = self._get_obs()
@@ -335,8 +350,8 @@ class LawnMowingEnvironment(Env):
     def reset(self, seed=None, options=None):
         if self.game_over:
             self.game_over = False
-            self.destroy_thread()
-            self._stop_event.clear()
+            #self.destroy_thread()
+            #self._stop_event.clear()
         
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
@@ -344,13 +359,14 @@ class LawnMowingEnvironment(Env):
         #Reset the agent point and penalties
         self.points = 0
         self.penalty = 0
+        self.step_counter = 0 
 
         #Refresh the grass
-        self.state = np.random.randint(low=0, high=4, size=(self.size, self.size))
+        self.state = np.random.randint(low=1, high=4, size=(self.size, self.size))
 
         # Choose the agent's location uniformly at random
         self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
-        print("posizione agente",self._agent_location)
+        
 
         #Set shaved grass in the agent's location
         self.state[self._agent_location[0], self._agent_location[1]]= 6 
@@ -489,11 +505,11 @@ class LawnMowingEnvironment(Env):
         if self.render_mode == "human":
             self._render_frame()
 
-
         return observation, info
 
     def _get_obs(self):
-        return {"agent": self._agent_location, "grid":self.state}
+        return self.state
+        #return {"agent": self._agent_location, "grid":self.state}
     
     def _get_info(self):
         return {"around":self.observation_space} #????
@@ -554,29 +570,56 @@ class LawnMowingEnvironment(Env):
     def grow_grass(self, weather_interval= 30):
         match self.current_weather:
             case "sunny":
-                start_time = time.time()
-                while time.time() - start_time <= weather_interval and not self.game_over:
-                    #Get only shaved, short and medium grass
-                    only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
-                    #Update grass height
-                    self.state[only_grass] += 1
-                    time.sleep(10)
+                #start_time = time.time()
+                #while time.time() - start_time <= weather_interval and not self.game_over:
+
+                #Get only shaved, short and medium grass
+                only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
+                #Update grass height
+                if self.step_counter!=0 and self.step_counter%20 == 0:
+                    #print("Matrice prima:")
+                    #print(self.state)
+                    #time.sleep(3)
+                    self.state[only_grass] = self.state[only_grass] + 1
+                    #print("Matrice dopo:")
+                    #print(self.state)
+                    #time.sleep(3)
+                
+                #time.sleep(10)
             case "cloudy":
-                start_time = time.time()
-                while time.time() - start_time <= weather_interval and not self.game_over:
-                    #Get only shaved, short and medium grass
-                    only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
-                    #Update grass height
-                    self.state[only_grass] += 1
-                    time.sleep(20)
+                #start_time = time.time()
+                #while time.time() - start_time <= weather_interval and not self.game_over:
+                
+                #Get only shaved, short and medium grass
+                only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
+                #Update grass height
+                if self.step_counter!=0 and self.step_counter%40 == 0:
+                    #print("Matrice prima:")
+                    #print(self.state)
+                    #time.sleep(3)
+                    self.state[only_grass] = self.state[only_grass]+1
+                    #print("Matrice dopo:")
+                    #print(self.state)
+                    #time.sleep(3)
+                
+                #time.sleep(20)
             case "rainy":
-                start_time = time.time()
-                while time.time() - start_time <= weather_interval and not self.game_over:
-                    #Get only shaved, short and medium grass
-                    only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
-                    #Update grass height
-                    self.state[only_grass] += 1
-                    time.sleep(15)
+                #start_time = time.time()
+                #while time.time() - start_time <= weather_interval and not self.game_over:
+                
+                #Get only shaved, short and medium grass
+                only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
+                #Update grass height
+                if self.step_counter!=0 and self.step_counter%30 == 0:
+                    #print("Matrice prima:")
+                    #print(self.state)
+                    #time.sleep(3)
+                    self.state[only_grass] = self.state[only_grass]+1
+                    #print("Matrice dopo:")
+                    #print(self.state)
+                    #time.sleep(3)
+                
+                #time.sleep(15)
 
     def update_weather_and_grow(self):
         flag = False
