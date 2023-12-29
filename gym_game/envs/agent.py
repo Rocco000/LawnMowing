@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from gym_game.envs.model import DeepQNetwork
+import random
 
 class MyAgent():
     #gamma -> weighting factor of the future rewards
@@ -12,7 +13,7 @@ class MyAgent():
     #eps_end -> minimum value for epsilon
     #batch_size -> batch dimension which contains the agent memoryù
     #input_dim is the game grid dimension
-    def __init__(self, gamma, epsilon, lr, input_dim, batch_size, n_actions, max_mem_size=100000, eps_end=0.01, eps_dec=5e-4):
+    def __init__(self, gamma, epsilon, lr, input_dim, batch_size, n_actions, max_mem_size=1000000, eps_end=0.01, eps_dec=5e-4):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -43,6 +44,7 @@ class MyAgent():
         #Here we store the done flag
         self.terminal_memory = np.zeros(self.mem_size, dtype=bool)
 
+        self.model_actions=0
     
     def store_transition(self, state, action, reward, new_state, done):
         #Index of the first available cell in memory
@@ -58,15 +60,16 @@ class MyAgent():
     def choose_action(self, observation): #observation is the actual state
         action = None
         #If it is grater than epsilon the agent make the best known action
-        if np.random.random() > self.epsilon:
+        if random.uniform(0,1) > self.epsilon:
             #EXPLOITATION
             state = T.FloatTensor(observation).unsqueeze(0).to(self.Q_eval.device) #Transform it in tensor and add a dimension (batch dimension)
-            actions = self.Q_eval(state) #Take prediction
-            #print("Predizione modello (singola griglia): ",actions)
-            actions = F.softmax(actions, dim=1) #dim=0 because the model output has only one dimension, it is a 1d array
-            #print("Dopo softmax (singola griglia): ",actions)
-            _, action = T.max(actions, 1)
-            action = action.cpu().numpy()
+            self.set_model_on_test_mode()
+            with T.no_grad():
+                actions = self.Q_eval(state) #Take prediction
+                actions = F.softmax(actions, dim=1) #dim=0 because the model output has only one dimension, it is a 1d array
+                _, action = T.max(actions, 1)
+                action = action.cpu().numpy()
+                self.model_actions+=1
         else:
             #Random action -> EXPLORATION
             action = np.random.choice(self.action_space)
@@ -74,13 +77,11 @@ class MyAgent():
         return action
     
     def learn(self):
+        self.set_model_on_train_mode()
         #At the beginning the memory is zeros/random, therefore until the memory is not filled (at leat the memory has the same dimension of batch) we go ahead 
         if self.mem_counter < self.batch_size:
             return
-        
-        #Set the gradiet to 0
-        self.Q_eval.optimizer.zero_grad() 
-
+         
         max_memory = min(self.mem_counter, self.mem_size) #because we want to select the last filled memory, namely a subset so we need the position of the maximum
 
         #Extract random states (their position) in the memory to create a batch
@@ -95,18 +96,20 @@ class MyAgent():
         terminal_batch = T.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
 
         action_batch = self.action_memory[batch]
-        #print("Dimensione state: {}, dimensione new_state: {}, dimensione reward: {}, dimensione terminal: {}".format(state_batch.shape, new_state_batch.shape, reward_batch.shape, terminal_batch.shape))
-        #??????????
+        
         q_eval =self.Q_eval(state_batch)[batch_index, action_batch] #actions performed on the "actual state"
-        #print("q_eval:")
-        #print(q_eval)
+       
         q_next = self.Q_eval(new_state_batch) #actions performed on the next state
-        q_next[terminal_batch] = 0.0 #????
+        q_next[terminal_batch] = 0.0
 
         #Parte tra quadre della forma del Q learning, parte iniziale!?
         q_target = reward_batch + self.gamma * T.max(q_next, dim=1)[0]
 
         loss = self.Q_eval.loss(q_target, q_eval).to(self.Q_eval.device)
+
+        #Set the gradiet to 0
+        self.Q_eval.optimizer.zero_grad() 
+
         loss.backward()
 
         self.Q_eval.optimizer.step()
