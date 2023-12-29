@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 from stable_baselines3 import DQN
 
 
@@ -21,18 +22,23 @@ if __name__ == "__main__":
                 target_update_interval= 50, #after 20 steps, the target model will be updated
                 verbose=1
                 )
-
-    print("*********************** TRAIN ***********************")
-    model.learn(total_timesteps=100000)
-    model.save("dql_model_baseline3")
+    
+    train_str = input("Do you want to start the train process? (True/False): ")
+    train = train_str.lower() in ['true', '1', 'yes']
+    if train:
+        print("*********************** TRAIN ***********************")
+        model.learn(total_timesteps=100000)
+        model.save("dql_model_baseline3")
 
     print("*********************** TEST ***********************")
     num_games = int(input("Insert the number of games to test the agent:\n"))
+    model.load("dql_model_baseline3", env=env)
 
     model_env = model.get_env()
     observation = model_env.reset()
 
-    trend_game = list()
+    trend_test = list()
+    games = list()
     best_test_game = 0
     best_test_score = -math.inf
     best_test_action = 0
@@ -51,7 +57,7 @@ if __name__ == "__main__":
         
         print("Game: {}, Points: {}\n\n".format(i, game_reward))
 
-        trend_game.append(game_reward)
+        trend_test.append(game_reward)
         model_env.reset()
 
         if game_reward > best_test_score:
@@ -60,9 +66,18 @@ if __name__ == "__main__":
             best_test_action = test_steps
         
         test_steps = 0
+        games.append(i)
 
     
     print("Best game in test: {}, Score: {}, Num. actions: {}".format(best_test_game, best_test_score, best_test_action))
+    plt.figure(figsize=(10, 5))
+    plt.plot(games, trend_test, label='Score', color='blue')
+    plt.title('Trend Score in TEST (baseline)')
+    plt.xlabel('Games')
+    plt.ylabel('Points')
+    plt.legend()
+    plt.show()
+
     env.close()
 
 
