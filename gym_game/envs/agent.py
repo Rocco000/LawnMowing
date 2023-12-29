@@ -57,10 +57,10 @@ class MyAgent():
 
         self.mem_counter += 1
     
-    def choose_action(self, observation): #observation is the actual state
+    def choose_action(self, observation, test_mode=False): #observation is the actual state
         action = None
         #If it is grater than epsilon the agent make the best known action
-        if random.uniform(0,1) > self.epsilon:
+        if random.uniform(0,1) > self.epsilon or test_mode:
             #EXPLOITATION
             state = T.FloatTensor(observation).unsqueeze(0).to(self.Q_eval.device) #Transform it in tensor and add a dimension (batch dimension)
             self.set_model_on_test_mode()
