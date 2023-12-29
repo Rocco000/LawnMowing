@@ -7,5 +7,11 @@ from gymnasium.envs.registration import register
 register(
     id="gym_game/LawnMowingGame-v0",
     entry_point="gym_game.envs:LawnMowingEnvironment",
-    max_episode_steps=2000,
+    max_episode_steps=10000,
+)
+
+register(
+    id="gym_game/LawnMowingGame-v1",
+    entry_point="gym_game.envs:LawnMowingEnvironment2",
+    max_episode_steps=10000,
 )

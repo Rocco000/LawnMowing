@@ -1,1 +1,2 @@
 from gym_game.envs.environment import LawnMowingEnvironment
+from gym_game.envs.environment2 import LawnMowingEnvironment2
