@@ -1,12 +1,10 @@
-import gymnasium as gym
 from gymnasium import Env
 from gymnasium import spaces
 import pygame
 import os
 
 import numpy as np
-import time
-import threading
+
 
 class LawnMowingEnvironment(Env):
     
@@ -50,10 +48,6 @@ class LawnMowingEnvironment(Env):
         self.cloudy = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_cloudy.png'))
         self.rainy = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_rainy.png'))
         
-        #Create thread to update weather and grass
-        #self.weather_thread = threading.Thread(target=self.update_weather_and_grow)
-        #self._stop_event = threading.Event()
-        
         self.game_over = False
 
         #To count the number of steps
@@ -62,13 +56,6 @@ class LawnMowingEnvironment(Env):
         # Observations are dictionaries with the agent's location and the position of its surrounding.
         # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
         self.observation_space = spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
-
-        """self.observation_space = spaces.Dict(
-            {
-                "agent": spaces.Box(low=0, high=size-1, shape=(2,), dtype=int),
-                "grid": spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
-            }
-        )"""
 
         # We have 5 actions, corresponding to "right", "up", "left", "down", "cut"
         self.action_space = spaces.Discrete(7)
@@ -107,7 +94,6 @@ class LawnMowingEnvironment(Env):
         self.current_weather = "sunny"
 
     def render(self):
-        #if self.render_mode == "rgb_array":
         return self._render_frame()
         
     def _render_frame(self):
@@ -188,67 +174,54 @@ class LawnMowingEnvironment(Env):
         pygame.display.flip()
 
         # Update the screen to avoid freezing
-        pygame.event.get()
-    
-    def create_weather_thread(self):
-        if not self.game_over:
-            self.weather_thread = threading.Thread(target=self.update_weather_and_grow)    
-            self.weather_thread.start() #Start thread
-
-    def destroy_thread(self):
-        if self.weather_thread.is_alive():
-            print("Sto aspettando il thread")
-            self._stop_event.set()
-            self.weather_thread.join(timeout=0) #Close thread
-            #self.weather_thread = None
+        pygame.event.get() 
 
     def close(self):
         pygame.quit() #To close the game window
     
     def step(self, action):
         self.step_counter = self.step_counter + 1
-        #print("Num azione: ",self.step_counter)
         reward = None
 
         #Check agent's location (If it is outside of the grid)
         if self._agent_location[0]<0 or self._agent_location[0]>=self.size or self._agent_location[1]<0 or self._agent_location[1]>=self.size: 
-            reward = -1000
+            reward = -20
         else:
             #Check if the agent go outside of the game grid
             if self._agent_location[0] == 0:
                 #The agent is on the first row and the first column of the game grid and the action is backward
                 if self._agent_location[1]==0 and action==3:
-                    reward=-1000
+                    reward=-20
                 #The agent is on the first row and the last column of the game grid and the action is forward
                 elif self._agent_location[1]==(self.size-1) and action==1:
-                    reward=-1000
+                    reward=-20
                 #The agent is on the first row of the game grid
                 elif action == 2: #Go to left
-                    reward = -1000
+                    reward = -20
             elif self._agent_location[0] == (self.size-1):
                 #The agent is on the last row and the first column of the game grid and the action is backward
                 if self._agent_location[1]==0 and action==3:
-                    reward=-1000
+                    reward=-20
                 #The agent is on the last row and the last column of the game grid and the action is forward
                 elif self._agent_location[1]==(self.size-1) and action==1:
-                    reward=-1000
+                    reward=-20
                 #The agent is on the last row of the game grid
                 elif action == 0: #Go to right
-                    reward = -1000
+                    reward = -20
             elif self._agent_location[1] == 0:#The agent is on the first column
                 if self._agent_location[0]==0 and action==2:
-                    reward=-1000
+                    reward=-20
                 elif self._agent_location[0]==(self.size-1) and action==0:
-                    reward=-1000
+                    reward=-20
                 elif action == 3: #Go to back
-                    reward = -1000
+                    reward = -20
             elif self._agent_location[1] == (self.size-1):
                 if self._agent_location[0]==0 and action==2:
-                    reward=-1000
+                    reward=-20
                 elif self._agent_location[0]==(self.size-1) and action==0:
-                    reward=-1000
+                    reward=-20
                 elif action == 1: #Go ahead
-                    reward = -1000
+                    reward = -20
 
             if reward is None:
                 #Take grid cell
@@ -260,41 +233,41 @@ class LawnMowingEnvironment(Env):
                             reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -1
+                            reward = -4#-1
                         elif action == 5: #medium cut
-                            reward = -2
+                            reward = -4#-2
                         elif action == 6: #strong cut
-                            reward = -3
+                            reward = -4#-3
                     case 1: #short grass
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -1
+                            reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
                             reward = 3
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                         elif action == 5: #medium cut
-                            reward = -1
+                            reward = -1#-1
                         elif action == 6: #strong cut
-                            reward = -2
+                            reward = -1#-2
                     case 2: #grass medium height
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -1
+                            reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -1
+                            reward = -2#-1
                         elif action == 5: #medium cut
                             reward = 6
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                         elif action == 6: #strong cut
-                            reward = -1
+                            reward = -2#-1
                     case 3: #high grass
                         if action >=0 and action<=3 : #right-up-left-down
-                            reward = -1
+                            reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -2
+                            reward = -3#-2
                         elif action == 5: #medium cut
-                            reward = -1
+                            reward = -3#-1
                         elif action == 6: #strong cut
                             reward = 9
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
@@ -303,21 +276,21 @@ class LawnMowingEnvironment(Env):
                             reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -3
+                            reward = -4#-3
                         elif action == 5: #medium cut
-                            reward = -3
+                            reward = -4#-3
                         elif action == 6: #strong cut
-                            reward = -3
+                            reward = -4#-3
                     case 5: #rock
                         if action >=0 and action<=3 : #right-up-left-down
                             reward = 0
                             self.move_agent(action)
                         elif action == 4: #weak cut
-                            reward = -4
+                            reward = -5#-4
                         elif action == 5: #medium cut
-                            reward = -4
+                            reward = -5#-4
                         elif action == 6: #strong cut
-                            reward = -4
+                            reward = -5#-4
 
         #Update agent points
         self.points += reward
@@ -327,17 +300,15 @@ class LawnMowingEnvironment(Env):
             self.penalty += reward
 
         terminated = False
-        if self.points >=200 or self.penalty<=-50: #point threshold - penalty threshold ?????
+        if self.points >=200 or self.penalty<=-20: #point threshold - penalty threshold ?????
             terminated = True
             self.game_over = True
         
         if not terminated:
             if self.step_counter == self.weather_interval:
-                #print("Aggiorno meteo!")
                 self.step_counter = 0
                 self.update_weather()
             else:
-                #print("Erba cresce")
                 self.grow_grass()
 
         
@@ -350,8 +321,6 @@ class LawnMowingEnvironment(Env):
     def reset(self, seed=None, options=None):
         if self.game_over:
             self.game_over = False
-            #self.destroy_thread()
-            #self._stop_event.clear()
         
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
@@ -373,122 +342,6 @@ class LawnMowingEnvironment(Env):
         
 
         self.generate_obstacles()
-
-        """
-        if np.array_equal(self._agent_location, [0,0]):
-
-            if any(np.array_equal([0,1], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([1,0], obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal([0,1], self.obstacles_location[i]) or np.array_equal([1,0], self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break       
-        elif np.array_equal(self._agent_location, [0,self.size-1]):
-            if any(np.array_equal([0,self.size-2], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([1,self.size-1], obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal([0,self.size-2], self.obstacles_location[i]) or np.array_equal([1,self.size-1], self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break  
-        elif np.array_equal(self._agent_location, [self.size-1,0]):
-            if any(np.array_equal([self.size-2,0], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([self.size-1,1], obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal([self.size-2,0], self.obstacles_location[i]) or np.array_equal([self.size-1,1], self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break  
-        elif np.array_equal(self._agent_location, [self.size-1,self.size-1]):
-            if any(np.array_equal([self.size-1,self.size-2], obstacle) for obstacle in self.obstacles_location) and any(np.array_equal([self.size-2,self.size-1], obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal([self.size-1,self.size-2], self.obstacles_location[i]) or np.array_equal([self.size-2,self.size-1], self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break  
-        elif self._agent_location[1]==0: #agent in the first column
-            agent_position = self._agent_location
-            p1 = agent_position+[-1,0]
-            p2 = agent_position+[0,1]
-            p3 = agent_position+[1,0]
-            if any(np.array_equal(p1, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p2, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p3, obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal(p1, self.obstacles_location[i]) or np.array_equal(p2, self.obstacles_location[i]) or np.array_equal(p3, self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break
-        elif self._agent_location[1]==(self.size-1): #aget in the last column
-            agent_position = self._agent_location
-            p1 = agent_position+[-1,0]
-            p2 = agent_position+[0,-1]
-            p3 = agent_position+[1,0]
-            if any(np.array_equal(p1, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p2, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p3, obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal(p1, self.obstacles_location[i]) or np.array_equal(p2, self.obstacles_location[i]) or np.array_equal(p3, self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break
-        elif self._agent_location[0]==0: #agent in the first row
-            agent_position = self._agent_location
-            p1 = agent_position+[0,-1]
-            p2 = agent_position+[1,0]
-            p3 = agent_position+[0,1]
-            if any(np.array_equal(p1, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p2, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p3, obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal(p1, self.obstacles_location[i]) or np.array_equal(p2, self.obstacles_location[i]) or np.array_equal(p3, self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break
-        elif self._agent_location[0]==(self.size-1): #agent in the last row
-            agent_position = self._agent_location
-            p1 = agent_position+[0,-1]
-            p2 = agent_position+[-1,0]
-            p3 = agent_position+[0,1]
-            if any(np.array_equal(p1, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p2, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p3, obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal(p1, self.obstacles_location[i]) or np.array_equal(p2, self.obstacles_location[i]) or np.array_equal(p3, self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break
-        else:
-            agent_position = self._agent_location
-            p1 = agent_position+[0,-1]
-            p2 = agent_position+[-1,0]
-            p3 = agent_position+[0,1]
-            p4 = agent_position+[1,0]
-            if any(np.array_equal(p1, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p2, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p3, obstacle) for obstacle in self.obstacles_location) and any(np.array_equal(p4, obstacle) for obstacle in self.obstacles_location):
-
-                for i in range(self.num_obstacle):
-
-                    if np.array_equal(p1, self.obstacles_location[i]) or np.array_equal(p2, self.obstacles_location[i]) or np.array_equal(p3, self.obstacles_location[i]) or np.array_equal(p4, self.obstacles_location[i]):
-                        ps = self.obstacles_location[i]
-                        self.obstacles_location[i] = self.np_random.integers(0, self.size, size=2, dtype=int)
-                        self.check_obstacles_position(position=ps)
-                        break       
-        """
-
         #Add the obstacles on matrix
         i = 0        
         for location in self.obstacles_location:
@@ -504,15 +357,15 @@ class LawnMowingEnvironment(Env):
 
         if self.render_mode == "human":
             self._render_frame()
+        self.current_weather="sunny"
 
         return observation, info
 
     def _get_obs(self):
         return self.state
-        #return {"agent": self._agent_location, "grid":self.state}
     
     def _get_info(self):
-        return {"around":self.observation_space} #????
+        return {"around":self.observation_space}
     
     def generate_obstacles(self):
         # We will sample the obstacle's location randomly until it does not coincide with the agent's location or other obstacles
@@ -567,67 +420,27 @@ class LawnMowingEnvironment(Env):
         self.grow_grass()
     
 
-    def grow_grass(self, weather_interval= 30):
+    def grow_grass(self):
         match self.current_weather:
             case "sunny":
-                #start_time = time.time()
-                #while time.time() - start_time <= weather_interval and not self.game_over:
-
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%20 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
                     self.state[only_grass] = self.state[only_grass] + 1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(10)
+        
             case "cloudy":
-                #start_time = time.time()
-                #while time.time() - start_time <= weather_interval and not self.game_over:
-                
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%40 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
                     self.state[only_grass] = self.state[only_grass]+1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(20)
+
             case "rainy":
-                #start_time = time.time()
-                #while time.time() - start_time <= weather_interval and not self.game_over:
                 
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%30 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
                     self.state[only_grass] = self.state[only_grass]+1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(15)
-
-    def update_weather_and_grow(self):
-        flag = False
-        while not self.game_over:
-            if not flag:
-                flag = True
-            else:
-                self.update_weather()
-    
-
 

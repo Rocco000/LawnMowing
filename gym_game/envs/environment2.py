@@ -1,12 +1,9 @@
-import gymnasium as gym
 from gymnasium import Env
 from gymnasium import spaces
 import pygame
 import os
 
 import numpy as np
-import time
-import threading
 
 class LawnMowingEnvironment2(Env):
     
@@ -49,10 +46,6 @@ class LawnMowingEnvironment2(Env):
         self.sunny = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_sunny.png'))
         self.cloudy = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_cloudy.png'))
         self.rainy = pygame.image.load(os.path.join(gym_game_dir, 'texture','house_rainy.png'))
-        
-        #Create thread to update weather and grass
-        #self.weather_thread = threading.Thread(target=self.update_weather_and_grow)
-        #self._stop_event = threading.Event()
 
 
         #To count the number of steps
@@ -61,13 +54,6 @@ class LawnMowingEnvironment2(Env):
         # Observations are dictionaries with the agent's location and the position of its surrounding.
         # The agent's position is represented by a vector that contains the coordinate. The vector values are in the range 0-7
         self.observation_space = spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
-
-        """self.observation_space = spaces.Dict(
-            {
-                "agent": spaces.Box(low=0, high=size-1, shape=(2,), dtype=int),
-                "grid": spaces.Box(low=0, high=11, shape=(size, size), dtype=int)
-            }
-        )"""
 
         # We have 5 actions, corresponding to "right", "up", "left", "down", "cut"
         self.action_space = spaces.Discrete(12)
@@ -78,13 +64,6 @@ class LawnMowingEnvironment2(Env):
         I.e. 0 corresponds to "right", 1 to "up" etc.
         """
         self._action_to_direction = {
-            #0: np.array([1, 0]),
-            #1: np.array([0, 1]),
-            #2: np.array([-1, 0]),
-            #3: np.array([0, -1]),
-            #4: np.array([0, 0]),
-            #5: np.array([0, 0]),
-            #6: np.array([0, 0])
             0: np.array([1, 0]), #dx-low
             1: np.array([1, 0]), #dx-medium
             2: np.array([1, 0]), #dx-strong
@@ -119,7 +98,6 @@ class LawnMowingEnvironment2(Env):
         self.current_weather = "sunny"
 
     def render(self):
-        #if self.render_mode == "rgb_array":
         return self._render_frame()
         
     def _render_frame(self):
@@ -208,49 +186,39 @@ class LawnMowingEnvironment2(Env):
     
     def step(self, action):
         self.step_counter = self.step_counter + 1
-        #print("Num azione: ",self.step_counter)
         reward = None
 
         #Check agent's location (If it is outside of the grid)
         if self._agent_location[0]<0 or self._agent_location[0]>=self.size or self._agent_location[1]<0 or self._agent_location[1]>=self.size: 
-            print("Posizione non valida: ",self._agent_location)
-            reward = -10
+            reward = -20
         else:
             #Check if the agent go outside of the game grid
             if self._agent_location[0] == 0:
                 #The agent is on the first row and the first column of the game grid and the action is backward
                 if self._agent_location[1]==0 and (action==9 or action==10 or action==11):
                     reward=-20
-                    print("Posizione non valida (indietro): ",self._agent_location)
                 #The agent is on the first row and the last column of the game grid and the action is forward
                 elif self._agent_location[1]==(self.size-1) and (action==3 or action==4 or action==5):
                     reward=-20
-                    print("Posizione non valida (avanti): ",self._agent_location)
                 #The agent is on the first row of the game grid
                 elif action == 6 or action==7 or action==8: #Go to left
                     reward = -20
-                    print("Posizione non valida (sx): ",self._agent_location)
             elif self._agent_location[0] == (self.size-1):
                 #The agent is on the last row and the first column of the game grid and the action is backward
                 if self._agent_location[1]==0 and (action==9 or action==10 or action==11):
                     reward=-20
-                    print("Posizione non valida (indietro): ",self._agent_location)
                 #The agent is on the last row and the last column of the game grid and the action is forward
                 elif self._agent_location[1]==(self.size-1) and (action==3 or action==4 or action==5):
                     reward=-20
-                    print("Posizione non valida (avanti): ",self._agent_location)
                 #The agent is on the last row of the game grid
                 elif action == 0 or action==1 or action==2: #Go to right
                     reward = -20
-                    print("Posizione non valida (dx): ",self._agent_location)
             elif self._agent_location[1] == 0:#The agent is on the first column
                 if action == 9 or action==10 or action==11: #Go to back
                     reward = -20
-                    print("Posizione non valida (indietro): ",self._agent_location)
             elif self._agent_location[1] == (self.size-1):
                 if action == 3 or action==4 or action==5: #Go ahead
                     reward = -20
-                    print("Posizione non valida (avanti): ",self._agent_location)
 
             if reward is None:
                 #Take grid cell
@@ -334,11 +302,9 @@ class LawnMowingEnvironment2(Env):
         
         if not terminated:
             if self.step_counter == self.weather_interval:
-                #print("Aggiorno meteo!")
                 self.step_counter = 0
                 self.update_weather()
             else:
-                #print("Erba cresce")
                 self.grow_grass()
 
         
@@ -369,7 +335,6 @@ class LawnMowingEnvironment2(Env):
         
 
         self.generate_obstacles()
-
         #Add the obstacles on matrix
         i = 0        
         for location in self.obstacles_location:
@@ -391,10 +356,9 @@ class LawnMowingEnvironment2(Env):
 
     def _get_obs(self):
         return self.state
-        #return {"agent": self._agent_location, "grid":self.state}
     
     def _get_info(self):
-        return {"around":self.observation_space} #????
+        return {"around":self.observation_space}
     
     def generate_obstacles(self):
         # We will sample the obstacle's location randomly until it does not coincide with the agent's location or other obstacles
@@ -449,56 +413,26 @@ class LawnMowingEnvironment2(Env):
         self.grow_grass()
     
 
-    def grow_grass(self, weather_interval= 30):
+    def grow_grass(self):
         match self.current_weather:
             case "sunny":
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%20 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
                     self.state[only_grass] = self.state[only_grass] + 1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(10)
+
             case "cloudy":
-                #start_time = time.time()
-                #while time.time() - start_time <= weather_interval and not self.game_over:
-                
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%40 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
-                    self.state[only_grass] = self.state[only_grass]+1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(20)
+                    self.state[only_grass] = self.state[only_grass]+1                
+
             case "rainy":
-                #start_time = time.time()
-                #while time.time() - start_time <= weather_interval and not self.game_over:
-                
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
                 if self.step_counter!=0 and self.step_counter%30 == 0:
-                    #print("Matrice prima:")
-                    #print(self.state)
-                    #time.sleep(3)
                     self.state[only_grass] = self.state[only_grass]+1
-                    #print("Matrice dopo:")
-                    #print(self.state)
-                    #time.sleep(3)
-                
-                #time.sleep(1
-    
-
 
