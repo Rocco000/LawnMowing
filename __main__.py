@@ -22,7 +22,7 @@ if __name__ == "__main__":
         scores, eps_history = [], []
         max_score = -math.inf
         LEARN_EVERY = 4
-        n_games = 1000
+        n_games = 100
         agent.set_model_on_train_mode()
         best_game = 0
         best_model_actions = 0
@@ -30,13 +30,20 @@ if __name__ == "__main__":
 
         #PLOT
         plt.ion()  # Active the Matplotlib interactive mode
-        plt.figure(figsize=(10, 5))
-        plt.plot(games, scores, label='Score', color='blue')
-        plt.plot(games, eps_history, label='Epsilon', color='orange')
-        plt.title('Trend Score and Epsilon (1° approach)')
-        plt.xlabel('Games')
-        plt.ylabel('Values')
-        plt.legend()
+
+        #Plot score
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
+        ax1.set_title('Trend Score')
+        ax1.set_xlabel('Games')
+        ax1.set_ylabel('Score')
+        ax1.legend()
+        
+        #Plot epsilon
+        fig2, ax2 = plt.subplots(figsize=(10, 5))
+        ax2.set_title('Trend Epsilon')
+        ax2.set_xlabel('Games')
+        ax2.set_ylabel('Epsilon')
+        ax2.legend()
 
         for i in range(n_games):
             score = 0
@@ -76,9 +83,17 @@ if __name__ == "__main__":
             observation, _ = env.reset()
             agent.model_actions = 0
 
-            plt.plot(games, scores, label='Score', color='blue')
-            plt.plot(games, eps_history, label='Epsilon', color='orange')
-            plt.draw()
+            #UPDATE PLOTS
+            ax1.plot(games, scores, label='Score', color='blue')
+            ax1.grid(True)
+            ax2.plot(games, eps_history, label='Epsilon', color='orange')
+            ax2.grid(True)
+
+            fig1.canvas.draw()
+            fig1.canvas.flush_events()
+            fig2.canvas.draw()
+            fig2.canvas.flush_events()
+
             plt.pause(0.5)
 
 
