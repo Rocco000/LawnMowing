@@ -2,9 +2,10 @@ import gymnasium as gym
 from gym_game.envs.agent import MyAgent
 import numpy as np
 import torch
-import os
 import math
 import matplotlib.pyplot as plt
+import csv
+import time
 
 
 if __name__ == "__main__":
@@ -12,8 +13,29 @@ if __name__ == "__main__":
     print("Spazio delle osservazioni (griglia):",env.observation_space.shape)
     print("Spazio delle azioni: ",env.action_space.n)
 
-    agent = MyAgent(gamma=0.8, epsilon=1.0, batch_size=128, n_actions=7, eps_end=0.01, input_dim=(8,8), lr=0.001)
+    g = float(input("Insert the gamma value\n")) #0.8
+    b = int(input("Insert the batch size\n")) #128
+    l = float(input("Insert the learning rate value\n")) #0.001
+    reward_range = str(input("Insert the reward range (min-max)\n")) 
 
+    agent = MyAgent(gamma=g, epsilon=1.0, batch_size=b, n_actions=7, eps_end=0.01, input_dim=(8,8), lr=l)
+    csv_row = {"model": "model1",
+                "environment": "LawnMowingGame-v0",
+                "gamma":g,
+                "epsilon":1.0,
+                "batch_size":b,
+                "lr":l,
+                "num_train_game":1000,
+                "best_train_game":0,
+                "max_train_score":0,
+                "num_train_actions":0,
+                "train_model_actions":0,
+                "num_test_game":0,
+                "best_test_game":0,
+                "max_test_score":0,
+                "mean_test_score":0,
+                "reward_range": reward_range
+            }
     train_str = input("Do you want to start the train process? (True/False): ")
     train = train_str.lower() in ['true', '1', 'yes']
     if train:
@@ -22,28 +44,13 @@ if __name__ == "__main__":
         scores, eps_history = [], []
         max_score = -math.inf
         LEARN_EVERY = 4
-        n_games = 100
+        n_games = int(input("Insert the number of train games\n"))
+        csv_row["num_train_game"] = n_games
         agent.set_model_on_train_mode()
         best_game = 0
         best_model_actions = 0
+        best_agent_steps = 0
         games = list()
-
-        #PLOT
-        plt.ion()  # Active the Matplotlib interactive mode
-
-        #Plot score
-        fig1, ax1 = plt.subplots(figsize=(10, 5))
-        ax1.set_title('Trend Score')
-        ax1.set_xlabel('Games')
-        ax1.set_ylabel('Score')
-        ax1.legend()
-        
-        #Plot epsilon
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
-        ax2.set_title('Trend Epsilon')
-        ax2.set_xlabel('Games')
-        ax2.set_ylabel('Epsilon')
-        ax2.legend()
 
         for i in range(n_games):
             score = 0
@@ -76,34 +83,46 @@ if __name__ == "__main__":
             if score>max_score:
                 max_score = score
                 best_game = i
+                best_agent_steps = steps
                 best_model_actions = agent.model_actions
                 configuration = agent.get_model_configuration()
-                torch.save(configuration, "dql_model_pytorch.pth")
+                torch.save(configuration, "models/model1/dql_model_pytorch.pth")
             
             observation, _ = env.reset()
             agent.model_actions = 0
 
-            #UPDATE PLOTS
-            ax1.plot(games, scores, label='Score', color='blue')
-            ax1.grid(True)
-            ax2.plot(games, eps_history, label='Epsilon', color='orange')
-            ax2.grid(True)
+        print("Best game: {}, Max score: {}, Agent actions: {}, Model actions: {}, Avarage last 100 games: {}".format(best_game, max_score, best_agent_steps, best_model_actions, np.mean(scores[-100:])))
+        
+        #CSV train columns
+        csv_row["best_train_game"] = best_game
+        csv_row["max_train_score"] = max_score
+        csv_row["num_train_actions"] = best_agent_steps
+        csv_row["train_model_actions"] = best_model_actions
 
-            fig1.canvas.draw()
-            fig1.canvas.flush_events()
-            fig2.canvas.draw()
-            fig2.canvas.flush_events()
+        #PLOT
+        #Plot score
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
+        ax1.set_title('Trend Score')
+        ax1.set_xlabel('Games')
+        ax1.set_ylabel('Score')
+        ax1.plot(games, scores, label='Score', color='blue')
+        ax1.legend()
+        
+        #Plot epsilon
+        fig2, ax2 = plt.subplots(figsize=(10, 5))
+        ax2.set_title('Trend Epsilon')
+        ax2.set_xlabel('Games')
+        ax2.set_ylabel('Epsilon')
+        ax2.plot(games, eps_history, label='Epsilon', color='orange')
+        ax2.legend()
 
-            plt.pause(0.5)
-
-
-        print("Best game: {}, Max score: {}, Model actions: {}, Avarage last 100 games: {}".format(best_game, max_score, best_model_actions, np.mean(scores[-100:])))
-
-        plt.ioff()  # Deactive the Matplotlib interactive mode
         plt.show()
+        time.sleep(3)
+        plt.close()
+
 
     print("*********************** TEST ***********************")
-    agent.update_model(torch.load("dql_model_pytorch.pth"))
+    agent.update_model(torch.load("models/model1/dql_model_pytorch.pth"))
     agent.set_model_on_test_mode()
     num_games = int(input("Insert the number of games to test the agent:\n"))
 
@@ -142,12 +161,28 @@ if __name__ == "__main__":
         games.append(i)
     
     print("Best game in test: {}, Score: {}, Num. actions: {}".format(best_test_game, best_test_score, best_test_action))
+
+    #CSV test columns
+    csv_row["num_test_game"] = num_games
+    csv_row["best_test_game"] = best_test_game
+    csv_row["max_test_score"] = best_test_score
+    csv_row["mean_test_score"] = np.mean(trend_test)
+
+    #PLOT TEST
     plt.figure(figsize=(10, 5))
     plt.plot(games, trend_test, label='Score', color='blue')
     plt.title('Trend Score in TEST (1° approach)')
     plt.xlabel('Games')
     plt.ylabel('Points')
     plt.legend()
+    plt.savefig("models/model1/test_trend_model1.png")
     plt.show()
+    time.sleep(3)
+    plt.close()
 
     env.close()
+
+    #Save data in csv
+    with open("models/model1/model1_configuration_and_performance.csv","a") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(csv_row.values())
