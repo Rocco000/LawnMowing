@@ -54,7 +54,7 @@ class QNN(nn.Module):
 class Agent(object):
     def __init__(self, gamma=0.99, epsilon=1.0, batch_size=128, lr=0.001,
                  epsilon_dec=0.996,  epsilon_end=0.01,
-                 mem_size=1000000):
+                 mem_size=1000000, num_actions:int=7):
         self.gamma = gamma # alpha = learn rate, gamma = discount
         self.epsilon = epsilon
         self.epsilon_dec = epsilon_dec # decrement of epsilon for larger spaces
@@ -62,24 +62,73 @@ class Agent(object):
         self.batch_size = batch_size
         self.memory = MemoryBuffer(mem_size)
         self.model_actions=0
+        self.num_actions = num_actions
 
     def save(self, state, action, reward, new_state, done):
         self.memory.save(state, action, reward, new_state, done)
 
-    def choose_action(self, state, test_mode=False):
+    def choose_action(self, state, agent_position, test_mode=False):
         rand = random.uniform(0,1)
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
-        self.q_func.eval()
-        with torch.no_grad():
-            action_values = self.q_func(state)
-        if not test_mode:
-            self.q_func.train()
+        action = None
+
         if rand > self.epsilon or test_mode: 
-            self.model_actions+=1
-            return np.argmax(action_values.cpu().data.numpy())
+            self.q_func.eval()
+            
+            with torch.no_grad():
+                valid = False
+                count = 0
+                while not valid:
+                    action_values = self.q_func(state)
+                    action = np.argmax(action_values.cpu().data.numpy())
+                        
+                    valid = self.check_action(action, agent_position)
+                    count += 1
+
+                    if count == 10 and not valid:
+                        count += 1
+                        while not valid:
+                            action = np.random.choice([i for i in range(self.num_actions)])
+                            valid = self.check_action(action, agent_position)
+
+
+            if not test_mode:
+                self.q_func.train()
+
+            if count != 11:
+                self.model_actions+=1
         else:
             # exploring: return a random action
-            return np.random.choice([i for i in range(12)])     
+            valid = False
+            while not valid:
+                action = np.random.choice([i for i in range(self.num_actions)])
+                valid = self.check_action(action, agent_position)
+        
+        return action     
+    
+    def check_action(self, action, position):
+        if position[0] == 0:
+            if position[1] == 0 and action == 3:
+                return False
+            elif position[1] == 7 and action == 1:
+                return False
+            elif action == 2:
+                return False
+        elif position[0] == 7:
+            if position[1] == 0 and action==3:
+                return False
+            elif position[1] == 7 and action==1:
+                return False
+            elif action == 0:
+                return False
+        elif position[1] == 0:
+            if action == 3: #indietro
+                return False
+        elif position[1] == 7:
+            if action == 1:
+                return False
+        
+        return True
 
     def reduce_epsilon(self):
         self.epsilon = self.epsilon*self.epsilon_dec if self.epsilon > self.epsilon_min else self.epsilon_min  
@@ -91,7 +140,7 @@ class Agent(object):
         torch.save(self.q_func.state_dict(), path)
 
     def load_saved_model(self, path):
-        self.q_func = QNN(64, 12, 42).to(device)
+        self.q_func = QNN(64, self.num_actions, 42).to(device)
         self.q_func.load_state_dict(torch.load(path))
         self.q_func.eval()
 
@@ -104,15 +153,15 @@ class Agent(object):
 class DoubleQAgent(Agent):
     def __init__(self, gamma=0.99, epsilon=1.0, batch_size=128, lr=0.001,
                  epsilon_dec=0.996,  epsilon_end=0.01,
-                 mem_size=1000000, replace_q_target = 100):
+                 mem_size=1000000, replace_q_target = 100, num_actions:int=7):
         
         super().__init__(lr=lr, gamma=gamma, epsilon=epsilon, batch_size=batch_size,
              epsilon_dec=epsilon_dec,  epsilon_end=epsilon_end,
-             mem_size=mem_size)
+             mem_size=mem_size, num_actions=num_actions)
 
         self.replace_q_target = replace_q_target
-        self.q_func = QNN(64, 12, 42).to(device)
-        self.q_func_target = QNN(64, 12, 42).to(device)
+        self.q_func = QNN(64, self.num_actions, 42).to(device)
+        self.q_func_target = QNN(64, self.num_actions, 42).to(device)
         self.optimizer = optim.Adam(self.q_func.parameters(), lr=lr)
         
         
@@ -150,6 +199,6 @@ class DoubleQAgent(Agent):
 
     def load_saved_model(self, path):
         super().load_saved_model(path)
-        self.q_func_target = QNN(64, 12, 42).to(device)
+        self.q_func_target = QNN(64, self.num_actions, 42).to(device)
         self.q_func_target.load_state_dict(torch.load(path+'.target'))
         self.q_func_target.eval()

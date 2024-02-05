@@ -57,24 +57,67 @@ class MyAgent():
 
         self.mem_counter += 1
     
-    def choose_action(self, observation, test_mode=False): #observation is the actual state
+    def choose_action(self, observation, agent_position, test_mode=False): #observation is the actual state
         action = None
         #If it is grater than epsilon the agent make the best known action
         if random.uniform(0,1) > self.epsilon or test_mode:
             #EXPLOITATION
             state = T.FloatTensor(observation).unsqueeze(0).to(self.Q_eval.device) #Transform it in tensor and add a dimension (batch dimension)
             self.set_model_on_test_mode()
+            
+            valid = False
+            count = 0
             with T.no_grad():
-                actions = self.Q_eval(state) #Take prediction
-                actions = F.softmax(actions, dim=1) #dim=0 because the model output has only one dimension, it is a 1d array
-                _, action = T.max(actions, 1)
-                action = action.cpu().numpy()
+                while not valid:
+                    actions = self.Q_eval(state) #Take prediction
+                    actions = F.softmax(actions, dim=1) #dim=0 because the model output has only one dimension, it is a 1d array
+                    _, action = T.max(actions, 1)
+                    action = action.cpu().numpy()
+                    
+                    valid = self.check_action(action, agent_position)
+                    count += 1
+
+                    if count == 10 and not valid:
+                        count += 1
+                        while not valid:
+                            action = np.random.choice(self.action_space)
+                            valid = self.check_action(action, agent_position)
+
+            if count != 11:
                 self.model_actions+=1
         else:
             #Random action -> EXPLORATION
-            action = np.random.choice(self.action_space)
+            valid = False
+            while not valid:
+                action = np.random.choice(self.action_space)
+                valid = self.check_action(action, agent_position)
 
         return action
+    
+    def check_action(self, action, position):
+        if position[0] == 0:
+            if position[1] == 0 and action == 3:
+                return False
+            elif position[1] == 7 and action == 1:
+                return False
+            elif action == 2:
+                return False
+        elif position[0] == 7:
+            if position[1] == 0 and action==3:
+                return False
+            elif position[1] == 7 and action==1:
+                return False
+            elif action == 0:
+                return False
+        elif position[1] == 0:
+            if action == 3: #indietro
+                return False
+        elif position[1] == 7:
+            if action == 1:
+                return False
+        
+        return True
+
     
     def learn(self):
         self.set_model_on_train_mode()
