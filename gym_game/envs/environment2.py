@@ -10,7 +10,7 @@ class LawnMowingEnvironment2(Env):
     #Specify the render-modes 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode=None, size=8, weather_interval=60):
+    def __init__(self, render_mode=None, size=8, weather_interval=10):
         self.size = size  # The size of the square grid
         self.state = np.random.randint(low=1, high=4, size=(size, size)) #initialize the grid
         
@@ -227,13 +227,13 @@ class LawnMowingEnvironment2(Env):
                 match cell:
                     case 0: #shaved grass
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
-                            reward = -4#-1
+                            reward = -4
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
-                            reward = -4#-2
+                            reward = -4
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
-                            reward = -4#-3
+                            reward = -4
                             self.move_agent(action)
                     case 1: #short grass
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
@@ -241,28 +241,28 @@ class LawnMowingEnvironment2(Env):
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
-                            reward = -1#-1
+                            reward = -1
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
-                            reward = -1#-2
+                            reward = -1
                             self.move_agent(action)
                     case 2: #grass medium height
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
-                            reward = -2#-1
+                            reward = -2
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
                             reward = 6
                             self.state[self._agent_location[0], self._agent_location[1]] = 6
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
-                            reward = -2#-1
+                            reward = -2
                             self.move_agent(action)
                     case 3: #high grass
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
-                            reward = -3#-2
+                            reward = -3
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
-                            reward = -3#-1
+                            reward = -3
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
                             reward = 9
@@ -270,23 +270,23 @@ class LawnMowingEnvironment2(Env):
                             self.move_agent(action)
                     case 4: #tree
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
-                            reward = -4#-3
+                            reward = -4
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
-                            reward = -4#-3
+                            reward = -4
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
-                            reward = -4#-3
+                            reward = -4
                             self.move_agent(action)
                     case 5: #rock
                         if action == 0 or action==3 or action==6 or action==9: #weak cut
-                            reward = -5#-4
+                            reward = -5
                             self.move_agent(action)
                         elif action == 1 or action==4 or action==7 or action==10: #medium cut
-                            reward = -5#-4
+                            reward = -5
                             self.move_agent(action)
                         elif action == 2 or action==5 or action==8 or action==11: #strong cut
-                            reward = -5#-4
+                            reward = -5
                             self.move_agent(action)
 
         #Update agent points
@@ -419,20 +419,22 @@ class LawnMowingEnvironment2(Env):
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
-                if self.step_counter!=0 and self.step_counter%20 == 0:
+                if self.step_counter!=0 and self.step_counter%3 == 0:
                     self.state[only_grass] = self.state[only_grass] + 1
 
             case "cloudy":
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
-                if self.step_counter!=0 and self.step_counter%40 == 0:
+                if self.step_counter!=0 and self.step_counter%6 == 0:
                     self.state[only_grass] = self.state[only_grass]+1                
 
             case "rainy":
                 #Get only shaved, short and medium grass
                 only_grass = (self.state!=3) & (self.state != 4) & (self.state != 5) & (self.state<6)
                 #Update grass height
-                if self.step_counter!=0 and self.step_counter%30 == 0:
+                if self.step_counter!=0 and self.step_counter%4 == 0:
                     self.state[only_grass] = self.state[only_grass]+1
-
+    
+    def get_lawnmower_position(self):
+        return self._agent_location
