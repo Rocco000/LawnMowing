@@ -1,0 +1,13 @@
+model,environment,gamma,epsilon,batch_size,lr,num_train_game,best_train_game,max_train_score,num_train_actions,train_model_actions,num_test_game,best_test_game,max_test_score,mean_test_score,reward_range
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,1806,44,186,145,20,1,13,-10.1,no invalid actions -5 +9
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,9169,7,13,13,20,5,-11,-19.1,-20 -5 +9
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,5040,70,14,14,20,17,49,-6.6,-20 -5 +9 !!!
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,7760,12,8,8,20,12,-13,-27.15,no invalid actions -5 +9
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,914,45.5,87,14,20,13,17.5,-3.95,no invalid actions -2.5 +6
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,1007,-8,10,7,20,0,-20,-20.0,-20 -2.5 +6
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,3398,15,8,8,20,19,-5.5,-18.9,-20 -2.5 +6
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,3118,15,8,8,20,6,8,-15.9,no invalid actions -2.5 +6
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,7365,20.6,80,25,20,8,12.3,0.6699999999999998,no invalid actions -2 +3
+model1,LawnMowingGame-v0,0.8,1.0,128,0.001,10000,855,1,7,3,20,0,-5,-5.0,-5 -2 +3
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,9100,20.25,14,14,20,6,10,-3.6575,-5 -2 +3
+model1,LawnMowingGame-v1,0.8,1.0,128,0.001,10000,9971,6.75,14,9,20,18,-3.3,-5.885,no invalid actions -2 +3
