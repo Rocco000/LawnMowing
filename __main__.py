@@ -6,38 +6,63 @@ import math
 import matplotlib.pyplot as plt
 import csv
 import time
+from pathlib import Path
+import os
 
 
 if __name__ == "__main__":
-    env = gym.make("gym_game:gym_game/LawnMowingGame-v0", render_mode="human")
+    choose_env = 3
+    while choose_env!=1 and choose_env!=2:
+        choose_env = int(input("Select the gym environment (1: cut or move, 2: move and cut)\n"))
+    
+    env = None
+    env_str = None
+    if choose_env == 1:
+        env = gym.make("gym_game:gym_game/LawnMowingGame-v0", render_mode="human")
+        env_str = "LawnMowingGame-v0"
+    else:
+        env = gym.make("gym_game:gym_game/LawnMowingGame-v1", render_mode="human")
+        env_str = "LawnMowingGame-v1"
+    
     print("Spazio delle osservazioni (griglia):",env.observation_space.shape)
     print("Spazio delle azioni: ",env.action_space.n)
 
-    g = float(input("Insert the gamma value\n")) #0.8
-    b = int(input("Insert the batch size\n")) #128
-    l = float(input("Insert the learning rate value\n")) #0.001
-    reward_range = str(input("Insert the reward range (min-max)\n")) 
+    train_str = input("Do you want to start the train process? (True/False): ")
+    train = train_str.lower() in ['true', '1', 'yes']
+
+    g = 0.8
+    b = 128
+    l = 0.001
+    reward_range = None
+    if train:
+        g = float(input("Insert the gamma value\n")) #0.8
+        b = int(input("Insert the batch size\n")) #128
+        l = float(input("Insert the learning rate value\n")) #0.001
+        reward_range = str(input("Insert the reward range (stop penalty - min - max)\n")) 
+    else:
+        print("Gamma: {}, Starting Epsilon: 1, Batch size: {}, Learning rate: {}".format(g, b, l))
 
     agent = MyAgent(gamma=g, epsilon=1.0, batch_size=b, n_actions=7, eps_end=0.01, input_dim=(8,8), lr=l)
     csv_row = {"model": "model1",
-                "environment": "LawnMowingGame-v0",
-                "gamma":g,
-                "epsilon":1.0,
-                "batch_size":b,
-                "lr":l,
-                "num_train_game":1000,
-                "best_train_game":0,
-                "max_train_score":0,
-                "num_train_actions":0,
-                "train_model_actions":0,
-                "num_test_game":0,
-                "best_test_game":0,
-                "max_test_score":0,
-                "mean_test_score":0,
+                "environment": env_str,
+                "gamma": g,
+                "epsilon": 1.0,
+                "batch_size": b,
+                "lr": l,
+                "num_train_game": 0,
+                "best_train_game": 0,
+                "max_train_score": 0,
+                "num_train_actions": 0,
+                "train_model_actions": 0,
+                "num_test_game": 0,
+                "best_test_game": 0,
+                "max_test_score": 0,
+                "mean_test_score": 0,
                 "reward_range": reward_range
             }
-    train_str = input("Do you want to start the train process? (True/False): ")
-    train = train_str.lower() in ['true', '1', 'yes']
+    
+
+    Path("models/model1").mkdir(parents=True, exist_ok=True)
     if train:
         print("*********************** TRAIN ***********************")
         observation, _ = env.reset()
@@ -56,11 +81,12 @@ if __name__ == "__main__":
             score = 0
             done = False
             steps = 0
-            flag = True
+            
             while not done:
                 env.render()
                 obs = np.array(observation) #Transform the observation in numpy array
-                action = agent.choose_action(obs)
+                agent_position = env.get_lawnmower_position()
+                action = agent.choose_action(obs, agent_position)
                 
                 new_observation, reward, done, _, info = env.step(action)
                 score = score+reward
@@ -80,7 +106,7 @@ if __name__ == "__main__":
 
             print("Game: {}, Num. Actions: {}, Num. Model Actions: {}, Score: {}, Average score: {}, Epsilon: {}".format(i, steps, agent.model_actions, score, avg_score, agent.epsilon))
 
-            if score>max_score:
+            if score>max_score and agent.epsilon<=0.3:
                 max_score = score
                 best_game = i
                 best_agent_steps = steps
@@ -101,28 +127,34 @@ if __name__ == "__main__":
 
         #PLOT
         #Plot score
-        fig1, ax1 = plt.subplots(figsize=(10, 5))
-        ax1.set_title('Trend Score')
-        ax1.set_xlabel('Games')
-        ax1.set_ylabel('Score')
-        ax1.plot(games, scores, label='Score', color='blue')
-        ax1.legend()
+        plt.figure(figsize=(11, 10)) #width, height
+        plt.subplots_adjust(hspace=0.38)
+        plt.suptitle('Train trend score')
+
+        plt.subplot(2,1,1) #Nrow, Ncolumn, index
+        plt.title('Trend Score')
+        plt.plot(games, scores, color="blue")
+        plt.xlabel('Games')
+        plt.ylabel('Score')
         
         #Plot epsilon
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
-        ax2.set_title('Trend Epsilon')
-        ax2.set_xlabel('Games')
-        ax2.set_ylabel('Epsilon')
-        ax2.plot(games, eps_history, label='Epsilon', color='orange')
-        ax2.legend()
+        plt.subplot(2,1,2)
+        plt.title('Trend Epsilon')
+        plt.plot(games, eps_history, color="orange")
+        plt.xlabel('Games')
+        plt.ylabel('Epsilon')
 
+        plt.savefig("models/model1/train_trend_model1.png")
         plt.show()
         time.sleep(3)
         plt.close()
 
 
     print("*********************** TEST ***********************")
-    agent.update_model(torch.load("models/model1/dql_model_pytorch.pth"))
+    if train:
+        agent.update_model(torch.load("models/model1/dql_model_pytorch.pth"))
+    else:
+        agent.update_model(torch.load("models/model1/best_dql_model_pytorch.pth"))
     agent.set_model_on_test_mode()
     num_games = int(input("Insert the number of games to test the agent:\n"))
 
@@ -142,7 +174,8 @@ if __name__ == "__main__":
         while not done:
             env.render()
             obs = np.array(observation) #Transform the observation in numpy array
-            action = agent.choose_action(obs, test_mode=True)
+            agent_position = env.get_lawnmower_position()
+            action = agent.choose_action(obs, agent_position, test_mode=True)
             observation, reward, done, _, info = env.step(action)
             game_reward = game_reward + reward
             test_steps = test_steps + 1
@@ -160,7 +193,7 @@ if __name__ == "__main__":
         test_steps = 0
         games.append(i)
     
-    print("Best game in test: {}, Score: {}, Num. actions: {}".format(best_test_game, best_test_score, best_test_action))
+    print("Best game in test: {}, Score: {}, Num. actions: {}, Mean test score: {}".format(best_test_game, best_test_score, best_test_action, np.mean(trend_test)))
 
     #CSV test columns
     csv_row["num_test_game"] = num_games
@@ -175,7 +208,9 @@ if __name__ == "__main__":
     plt.xlabel('Games')
     plt.ylabel('Points')
     plt.legend()
-    plt.savefig("models/model1/test_trend_model1.png")
+    plt.xticks(games)
+    if train:
+        plt.savefig("models/model1/test_trend_model1.png")
     plt.show()
     time.sleep(3)
     plt.close()
@@ -183,6 +218,15 @@ if __name__ == "__main__":
     env.close()
 
     #Save data in csv
-    with open("models/model1/model1_configuration_and_performance.csv","a") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(csv_row.values())
+    if train:
+        if os.path.exists("models/model1/model1_configuration_and_performance.csv"):
+            with open("models/model1/model1_configuration_and_performance.csv", "a", encoding="utf-8", newline="") as csvfile:
+                fieldnames = list(csv_row.keys())
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writerow(csv_row)
+        else:
+            with open("models/model1/model1_configuration_and_performance.csv", "w", encoding="utf-8", newline="") as csvfile:
+                fieldnames = list(csv_row.keys())
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerow(csv_row)
